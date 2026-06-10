@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+env.bak/
+venv.bak/
+
+# IDEs and editors
+.idea/
+.vscode/
+
+# Logs and databases
+*.log
+*.db
+
+# Models, checkpoints, weights
+*.pt
+*.pth
+checkpoints/
+models/
+saved_models/
+runs/
+logs/
+tensorboard/
+
+# Data files (do not commit large datasets)
+data/
+*.csv
+*.npz
+*.npy
+
+
+# Backup and temp files
+*.bak
+*.tmp
