@@ -1,16 +1,17 @@
-"""
-MAI/IDL SS26 - Final assignment. 
+#----------------------
+# AUTHORS:
+# DAMIAN - 10012545
+# BHUVAN - 10001026
+#-----------------------
 
-MG 6/6/2026
-"""
 import torch
 
 class Trainer:
     def __init__(self, model, criterion, optimizer, device):
-        self.model = model
+        self.model     = model
         self.criterion = criterion
         self.optimizer = optimizer
-        self.device = device
+        self.device    = device
 
     def train_one_epoch(self, dataloader):
         self.model.train()
@@ -20,6 +21,7 @@ class Trainer:
         for images, labels in dataloader:
             images, labels = images.to(self.device), labels.to(self.device)
             
+            self.optimizer.zero_grad()
             outputs = self.model(images)
             loss = self.criterion(outputs, labels)
             
