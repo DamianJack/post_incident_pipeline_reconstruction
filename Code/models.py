@@ -6,7 +6,7 @@ MG 6/6/2026
 import torch
 import torch.nn as nn
 
-activation_str = nn.ReLU  # Placeholder for activation function, can be replaced with "ReLU" or others as needed.
+activation_str = "ReLU"  # Placeholder for activation function, can be replaced with "ReLU" or others as needed.
 
 
 class VGGBlock(nn.Module):
