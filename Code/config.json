@@ -1,4 +1,5 @@
-{
+{   
+    "ACTIVATION"   : "ReLU",
     "DATA"         : "cells",
     "DATA_PATH"    : "../data",
     "BATCH_SIZE"   : 64,
