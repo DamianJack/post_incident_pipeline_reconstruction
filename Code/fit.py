@@ -5,6 +5,7 @@
 #-----------------------
 
 import torch
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 class Trainer:
     def __init__(self, model, criterion, optimizer, device):
@@ -16,7 +17,7 @@ class Trainer:
     def train_one_epoch(self, dataloader):
         self.model.train()
         running_loss = 0.0
-        correct, sum = 0, 0
+        correct, total = 0, 0
         
         for images, labels in dataloader:
             images, labels = images.to(self.device), labels.to(self.device)
@@ -30,10 +31,10 @@ class Trainer:
             
             running_loss += loss.item() * images.size(0)
             _, predicted = outputs.max(1)
-            sum += labels.size(0)
+            total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
             
-        return running_loss / sum, (correct / sum) * 100
+        return running_loss / total, (correct / total) * 100
 
     def evaluate(self, dataloader):
         self.model.eval()
@@ -68,3 +69,29 @@ class Trainer:
         
         print("-" * 50)
         print("Training Complete!")
+
+    def test_eval(self, dataloader):
+        self.model.eval()
+        preds, targets = [], []
+        correct, total = 0, 0
+        
+        with torch.no_grad():
+            for images, labels in dataloader:
+                images, labels = images.to(self.device), labels.to(self.device)
+    
+                outputs = self.model(images)
+                preds = outputs.argmax(dim=1)
+    
+                preds.extend(preds.cpu().tolist())
+                targets.extend(labels.cpu().tolist())
+
+                correct += preds.eq(labels).sum().item()
+                total += labels.size(0)
+    
+        precision = precision_score(targets, preds, average="macro")
+        recall    = recall_score(targets, preds, average="macro")
+        macro_f1  = f1_score(targets, preds, average="macro")
+        accuracy  = (correct / total) * 100
+
+    
+        return precision, recall, macro_f1, accuracy
