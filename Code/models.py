@@ -1,8 +1,9 @@
-"""
-MAI/IDL SS26 - Final assignment. 
+#----------------------
+# AUTHORS:
+# DAMIAN - 10012545
+# BHUVAN - 10001026
+#-----------------------
 
-MG 6/6/2026
-"""
 import torch
 import torch.nn as nn
 
