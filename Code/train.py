@@ -13,26 +13,33 @@ from data import get_loaders
 import models
 from fit import Trainer
 
-def main():   
+def main(data, data_model):   
     with open("config.json", "r") as f:
         config = json.load(f)
+
+    data_config = config[data]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Training executing on device: {device}")
 
-    train_loader, val_loader, test_loader = get_loaders(data=config["DATA"], data_path=config["DATA_PATH"], batch_size=config["BATCH_SIZE"])
+    train_loader, val_loader, test_loader = get_loaders(data=data, data_path=data_config["DATA_PATH"], batch_size=data_config["BATCH_SIZE"])
 
-    model_class = getattr(models, config["MODEL"])
-    model = model_class(in_channels=config["CHANNELS"], num_classes=config["NUM_CLASSES"], drop_rate=config["DROP_RATE"], activation_str=config["ACTIVATION"]).to(device)
+    model_class = getattr(models, data_model)
+    model = model_class(in_channels=data_config["CHANNELS"], num_classes=data_config["NUM_CLASSES"], drop_rate=data_config["DROP_RATE"], activation_str=data_config["ACTIVATION"]).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=config["LEARNING_RATE"])
+    optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"])
 
     trainer = Trainer(model, criterion, optimizer, device)
-    trainer.fit(train_loader, val_loader, epochs=config["EPOCHS"])
+    trainer.fit(train_loader, val_loader, epochs=data_config["EPOCHS"])
     trainer.save_checkpoint("best_model.pth")
-    trainer.load_checkpoint("best_model.pth")
-    precision, recall, macro_f1 = trainer.test(test_loader)
-    print(f"\nTest Precision: {precision:.4f}, Recall: {recall:.4f}, Macro F1-Score: {macro_f1:.4f}")
+    #trainer.load_checkpoint("best_model.pth")
+    precision, recall, macro_f1, accuracy = trainer.test_eval(test_loader)
+    print(f"\nTest Precision: {precision:.4f}, Recall: {recall:.4f}, Macro F1-Score: {macro_f1:.4f}, Accuracy: {accuracy:.4f}%")
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Train a model on the specified dataset.")
+    parser.add_argument("--data", type=str, default="lesions", help="Dataset to use (default: lesions)", choices=["lesions", "cells", "chest", "organs", "orgs", "cifar100"])
+    parser.add_argument("--model", type=str, default="ResNet18", help="Model architecture to use (default: ResNet18)", choices=["ResNet18", "VGG16", "AlexNet"])
+    args = parser.parse_args()
+    main(args.data, args.model)
