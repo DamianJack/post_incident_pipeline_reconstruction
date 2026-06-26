@@ -12,6 +12,8 @@ def get_loaders(data, data_path, batch_size, val_split=0.1):
 
     d_path    = Path(data_path) / f"{data}.pt"
     data_dict = torch.load(d_path)
+    data_dict['train_labels'] = data_dict['train_labels'].long().flatten()
+    data_dict['test_labels']  = data_dict['test_labels'].long().flatten()
     # print(data_dict.keys())
 
     total_samples = data_dict['train_images'].shape[0]
@@ -26,6 +28,7 @@ def get_loaders(data, data_path, batch_size, val_split=0.1):
     val_data     = data_dict['train_images'][idx[train_size:]]
     val_labels   = data_dict['train_labels'][idx[train_size:]]
     # print(f"Train samples: {train_data.shape, train_labels.shape}, Validation samples: {val_data.shape, val_labels.shape}")
+    # print(f"NUM CLASSES: {len(torch.unique(train_labels))}")
 
     train_dataset = TensorDataset(train_data, train_labels)
     val_dataset   = TensorDataset(val_data, val_labels)
