@@ -14,6 +14,12 @@ class Trainer:
         self.optimizer = optimizer
         self.device    = device
 
+    def save_checkpoint(self, path):
+        torch.save(self.model.state_dict(), path)
+
+    def load_checkpoint(self, path):
+        self.model.load_state_dict(torch.load(path, map_location=self.device))
+
     def train_one_epoch(self, dataloader):
         self.model.train()
         running_loss = 0.0
@@ -72,7 +78,7 @@ class Trainer:
 
     def test_eval(self, dataloader):
         self.model.eval()
-        preds, targets = [], []
+        all_preds, all_targets = [], []
         correct, total = 0, 0
         
         with torch.no_grad():
@@ -82,15 +88,15 @@ class Trainer:
                 outputs = self.model(images)
                 preds = outputs.argmax(dim=1)
     
-                preds.extend(preds.cpu().tolist())
-                targets.extend(labels.cpu().tolist())
+                all_preds.extend(preds.cpu().tolist())
+                all_targets.extend(labels.cpu().tolist())
 
                 correct += preds.eq(labels).sum().item()
                 total += labels.size(0)
     
-        precision = precision_score(targets, preds, average="macro")
-        recall    = recall_score(targets, preds, average="macro")
-        macro_f1  = f1_score(targets, preds, average="macro")
+        precision = precision_score(all_targets, all_preds, average="macro")
+        recall    = recall_score(all_targets, all_preds, average="macro")
+        macro_f1  = f1_score(all_targets, all_preds, average="macro")
         accuracy  = (correct / total) * 100
 
     
