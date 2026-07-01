@@ -5,6 +5,7 @@
 #-----------------------
 
 import json
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -14,7 +15,7 @@ import models
 from fit import Trainer
 
 def main(data, data_model):   
-    with open("config.json", "r") as f:
+    with open("config//data_config.json", "r") as f:
         config = json.load(f)
 
     data_config = config[data]
@@ -30,11 +31,26 @@ def main(data, data_model):
     optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"])
 
     trainer = Trainer(model, criterion, optimizer, device)
-    trainer.fit(train_loader, val_loader, epochs=data_config["EPOCHS"])
-    trainer.save_checkpoint("best_model.pth")
-    #trainer.load_checkpoint("best_model.pth")
+    checkpoint_name = f"{data}_{data_model}.pth"
+    best_model_dir = Path("best_model")
+    best_model_dir.mkdir(parents=True, exist_ok=True)
+    checkpoint_path = f"{best_model_dir}/{checkpoint_name}"
+
+    trainer.fit(train_loader, val_loader, epochs=data_config["EPOCHS"], checkpoint_path=str(checkpoint_path))
+    trainer.load_checkpoint(str(checkpoint_path))
+
     precision, recall, macro_f1, accuracy = trainer.test_eval(test_loader)
     print(f"\nTest Precision: {precision:.4f}, Recall: {recall:.4f}, Macro F1-Score: {macro_f1:.4f}, Accuracy: {accuracy:.4f}%")
+    metrics = {
+        "dataset":   data,
+        "model":     data_model,
+        "checkpoint": str(checkpoint_path),
+        "accuracy":  accuracy,
+        "precision": precision,
+        "recall":    recall,
+        "macro_f1":  macro_f1,
+    }
+    return metrics
 
 if __name__ == "__main__":
     import argparse
@@ -43,3 +59,4 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="ResNet18", help="Model architecture to use (default: ResNet18)", choices=["ResNet18", "VGG16", "AlexNet"])
     args = parser.parse_args()
     main(args.data, args.model)
+    
