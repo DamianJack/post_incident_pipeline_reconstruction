@@ -15,7 +15,7 @@ class Trainer:
         self.device    = device
 
     def save_checkpoint(self, path):
-        torch.save(self.model.state_dict(), path, weights_only=True)
+        torch.save(self.model.state_dict(), path)
 
     def load_checkpoint(self, path):
         self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
