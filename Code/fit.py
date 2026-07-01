@@ -7,6 +7,9 @@
 import torch
 from sklearn.metrics import precision_score, recall_score, f1_score
 
+from logging import getLogger
+logger = getLogger(__name__)
+
 class Trainer:
     def __init__(self, model, criterion, optimizer, device):
         self.model     = model
@@ -62,8 +65,8 @@ class Trainer:
         return running_loss / total, (correct / total) * 100
 
     def fit(self, train_loader, val_loader, epochs, checkpoint_path=None):
-        print("\n Starting Training Routine...")
-        print("-" * 50)
+        logger.info(" Starting Training Routine...")
+        logger.info("-" * 50)
         best_val_acc = float("-inf")
         best_epoch = 0
         
@@ -76,15 +79,15 @@ class Trainer:
                 best_epoch = epoch + 1
                 self.save_checkpoint(checkpoint_path)
             
-            print(f"Epoch [{epoch+1:02d}/{epochs:02d}] | "
-                  f"Train Loss: {train_loss:.4f} - Train Acc: {train_acc:.2f}% | "
-                  f"Val Loss: {val_loss:.4f} - Val Acc: {val_acc:.2f}%")
+            logger.info(f"Epoch [{epoch+1:02d}/{epochs:02d}] | "
+                        f"Train Loss: {train_loss:.4f} - Train Acc: {train_acc:.2f}% | "
+                        f"Val Loss: {val_loss:.4f} - Val Acc: {val_acc:.2f}%")
 
         if checkpoint_path is not None and best_epoch > 0:
-            print(f"Best checkpoint saved: {checkpoint_path} (epoch={best_epoch}, val_acc={best_val_acc:.2f}%)")
+            logger.info(f"Best checkpoint saved: {checkpoint_path} (epoch={best_epoch}, val_acc={best_val_acc:.2f}%)")
         
-        print("-" * 50)
-        print("Training Complete!")
+        logger.info("-" * 50)
+        logger.info("Training Complete!")
 
         return best_val_acc, best_epoch
 

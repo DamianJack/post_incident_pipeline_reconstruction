@@ -7,6 +7,9 @@
 import torch
 import torch.nn as nn
 
+from logging import getLogger
+logger = getLogger(__name__)
+
 activation_str = "ReLU"  # Placeholder for activation function, can be replaced with "ReLU" or others as needed.
 
 
@@ -151,8 +154,8 @@ class ResNet18(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.activation = activation(inplace=True)
-        print("Using activation function:", self.activation)
-        
+        logger.info(f"Using activation function: {self.activation}")
+
         self.stage1 = nn.Sequential(
             ResBlock(64, 64, activation(inplace=True), stride=1),
             ResBlock(64, 64, activation(inplace=True), stride=1)

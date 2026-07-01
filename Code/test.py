@@ -1,8 +1,10 @@
 import csv
 import json
 import itertools
+from pathlib import Path
+import time
 
-from train import main
+from train import main, configure_logging
 
 def run_sweep(config_path="config//test_config.json"):
     with open(config_path, "r") as f:
@@ -15,6 +17,11 @@ def run_sweep(config_path="config//test_config.json"):
 
     results = []
     for dataset, model_name in itertools.product(datasets, models):
+        log_path = Path("logs")
+        log_path.mkdir(parents=True, exist_ok=True)
+        logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-train-{dataset}-{model_name}.log"
+        configure_logging(log_file=logfile_name)
+
         print("\n" + "=" * 60)
         print(f"RUN: dataset={dataset} | model={model_name}")
         print("=" * 60)
