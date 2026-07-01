@@ -46,8 +46,9 @@ def run_sweep(config_path="config//test_config.json"):
         else:
             print(f"{row['dataset']:<10} {row['model']:<10} "
                   f"acc={row.get('accuracy', float('nan')):6.2f}  "
+                  f"prec={row.get('precision', float('nan')):.4f}  "
+                  f"rec={row.get('recall', float('nan')):.4f}  "
                   f"f1={row.get('macro_f1', float('nan')):.4f}")
-
 
 if __name__ == "__main__":
     run_sweep()
