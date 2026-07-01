@@ -4,35 +4,83 @@ import itertools
 from pathlib import Path
 import time
 
-from train import main, configure_logging
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+from data import get_loaders
+import models
+from fit import Trainer
+from train import configure_logging
+import logging
+
+logger = logging.getLogger(__name__)
+
+def test_checkpoint(dataset, model_name, checkpoint_path=None):
+    with open("config//data_config.json", "r") as f:
+        cfg = json.load(f)
+
+    data_config = cfg[dataset]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    train_loader, valid_loader, test_loader = get_loaders(data=dataset, data_path=data_config["DATA_PATH"], batch_size=data_config["BATCH_SIZE"])
+
+    model_class = getattr(models, model_name)
+    model = model_class(in_channels=data_config["CHANNELS"], num_classes=data_config["NUM_CLASSES"], drop_rate=data_config.get("DROP_RATE", 0.5), activation_str=data_config.get("ACTIVATION")).to(device)
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=data_config.get("LEARNING_RATE", 1e-3))
+
+    trainer = Trainer(model, criterion, optimizer, device)
+
+    if checkpoint_path is None:
+        checkpoint_path = f"best_model/{dataset}_{model_name}.pth"
+
+    if not Path(checkpoint_path).exists():
+        logger.warning("Checkpoint not found at %s. Training from scratch.", checkpoint_path)
+        log_path = Path("logs")
+        log_path.mkdir(parents=True, exist_ok=True)
+        logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-train-{dataset}-{model_name}.log"
+        configure_logging(log_file=logfile_name)
+        trainer.fit(train_loader, valid_loader, epochs=data_config.get("EPOCHS", 10), checkpoint_path=str(checkpoint_path))
+
+    trainer.load_checkpoint(str(checkpoint_path))
+    precision, recall, macro_f1, accuracy = trainer.test_eval(test_loader)
+
+    metrics = {
+        "dataset": dataset,
+        "model": model_name,
+        "checkpoint": str(checkpoint_path),
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "macro_f1": macro_f1,
+    }
+    return metrics
 
 def run_sweep(config_path="config//test_config.json"):
     with open(config_path, "r") as f:
         config = json.load(f)
 
-    sweep        = config["SWEEP"]
-    datasets     = sweep["datasets"]
-    models       = sweep["models"]
+    sweep      = config["SWEEP"]
+    datasets   = sweep["datasets"]
+    models_list = sweep["models"]
     results_path = sweep.get("results_path", "results.csv")
 
     results = []
-    for dataset, model_name in itertools.product(datasets, models):
+    for dataset, model_name in itertools.product(datasets, models_list):
         log_path = Path("logs")
         log_path.mkdir(parents=True, exist_ok=True)
-        logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-train-{dataset}-{model_name}.log"
+        logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-test-{dataset}-{model_name}.log"
         configure_logging(log_file=logfile_name)
-
-        print("\n" + "=" * 60)
-        print(f"RUN: dataset={dataset} | model={model_name}")
-        print("=" * 60)
         try:
-            metrics = main(dataset, model_name)   # returns the dict from train.py
+            metrics = test_checkpoint(dataset, model_name)
             results.append(metrics)
-        except Exception as e:                    
-            print(f"[FAILED] {dataset} x {model_name}: {e}")
+        except Exception as e:
+            logger.exception("[FAILED] %s x %s", dataset, model_name)
             results.append({"dataset": dataset, "model": model_name, "error": str(e)})
 
-    # union of keys across all rows -> new Part 2/3 metrics become columns automatically
+    # union of keys across all rows -> new metrics become columns automatically
     fieldnames = []
     for row in results:
         for key in row:
@@ -55,7 +103,9 @@ def run_sweep(config_path="config//test_config.json"):
                   f"acc={row.get('accuracy', float('nan')):6.2f}  "
                   f"prec={row.get('precision', float('nan')):.4f}  "
                   f"rec={row.get('recall', float('nan')):.4f}  "
-                  f"f1={row.get('macro_f1', float('nan')):.4f}")
+                  f"f1={row.get('macro_f1', float('nan')):.4f}  "
+                  f"checkpoint={row.get('checkpoint', 'N/A')}")
+
 
 if __name__ == "__main__":
     run_sweep()
