@@ -5,6 +5,7 @@ __pycache__/
 # Distribution / packaging
 build/
 dist/
+best_model/
 
 # Virtual environments
 venv/
