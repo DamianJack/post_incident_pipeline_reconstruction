@@ -38,7 +38,8 @@ def main(data, data_model):
     model_class = getattr(models, data_model)
     model = model_class(in_channels=data_config["CHANNELS"], num_classes=data_config["NUM_CLASSES"], drop_rate=data_config["DROP_RATE"], activation_str=data_config["ACTIVATION"]).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"])
+    optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"],    weight_decay=data_config.get("WEIGHT_DECAY"),
+)
 
     trainer = Trainer(model, criterion, optimizer, device)
     checkpoint_name = f"{data}_{data_model}.pth"

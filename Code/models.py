@@ -18,7 +18,7 @@ class VGGBlock(nn.Module):
 
     C configuration from Simonyan & Zisserman's VGG paper.
     """
-    def __init__(self, in_channels, out_channels, num_convs):
+    def __init__(self, in_channels, out_channels, num_convs,activation=nn.ReLU):
         super().__init__()
         layers = []
         current_in_channels = in_channels
@@ -28,7 +28,7 @@ class VGGBlock(nn.Module):
             conv_padding = (kernel_size - 1) // 2  # To maintain spatial dimensions
             layers.append(nn.Conv2d(current_in_channels, out_channels, kernel_size=kernel_size, padding=conv_padding))
             layers.append(nn.BatchNorm2d(out_channels))
-            layers.append(nn.ReLU(inplace=True))
+            layers.append(activation(inplace=True))
             current_in_channels = out_channels
             
         layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
@@ -72,34 +72,36 @@ class AlexNet(nn.Module):
         super().__init__()
 
         drop_rate = kwargs.get("drop_rate", 0.5)
+        activation_name = kwargs.get("activation_str") or activation_str
+        Activation = getattr(nn, activation_name)
         
         self.features = nn.Sequential(
             nn.Conv2d(in_channels, 48, kernel_size=7, stride=2, padding=3),
             nn.BatchNorm2d(48),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             
             nn.Conv2d(48, 128, kernel_size=5, padding=2),
             nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             
             nn.Conv2d(128, 256, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.Conv2d(256, 192, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
         )
         
         self.classifier = nn.Sequential(
             nn.Dropout(p=drop_rate),
             nn.Linear(3072, 1024),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.Dropout(p=drop_rate),
             nn.Linear(1024, 1024),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.Linear(1024, num_classes),
         )
 
@@ -115,21 +117,22 @@ class VGG16(nn.Module):
         super().__init__()
 
         drop_rate = kwargs.get("drop_rate", 0.5)
-
+        activation_name = kwargs.get("activation_str") or activation_str
+        Activation = getattr(nn, activation_name)
         self.features = nn.Sequential(
-            VGGBlock(in_channels, 64, num_convs=2),
-            VGGBlock(64, 128, num_convs=2),
-            VGGBlock(128, 256, num_convs=3),
-            VGGBlock(256, 512, num_convs=3),
-            VGGBlock(512, 512, num_convs=3)
+            VGGBlock(in_channels, 64, num_convs=2, activation=Activation),
+            VGGBlock(64, 128, num_convs=2, activation=Activation),
+            VGGBlock(128, 256, num_convs=3, activation=Activation),
+            VGGBlock(256, 512, num_convs=3, activation=Activation),
+            VGGBlock(512, 512, num_convs=3, activation=Activation)
         )
         
         self.classifier = nn.Sequential(
             nn.Linear(2048, 1024),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.Dropout(p=drop_rate),
             nn.Linear(1024, 512),
-            nn.ReLU(inplace=True),
+            Activation(inplace=True),
             nn.Dropout(p=drop_rate),
             nn.Linear(512, num_classes)
         )
