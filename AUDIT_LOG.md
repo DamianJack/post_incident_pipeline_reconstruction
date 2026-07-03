@@ -1,9 +1,5 @@
 # Incident Audit Log
 
-Source: `commit_report.log`. Root-cause descriptions are inferred from commit messages and file
-context (no diffs were available), so entries marked *(inferred)* should be verified against the
-actual code before being treated as final documentation.
-
 | # | File | Manifestation (Symptom) | Root Cause | Structural Correction | Commit Hash |
 |---|------|--------------------------|------------|------------------------|--------------|
 | 1 | `Code/data.py` | Model validation metrics were unreliable / non-reproducible; validation set did not represent the true data distribution | Train/validation split was performed on an unshuffled, ordered index, so contiguous blocks of correlated samples (e.g. by class or acquisition order) ended up entirely in one split *(inferred)* | Introduced index randomization/shuffling before splitting, and corrected the split logic | `620e969` |
@@ -26,11 +22,3 @@ actual code before being treated as final documentation.
 | 18 | `config/data_config.json` | Training on the "chest" dataset converged poorly / diverged due to an inappropriate learning rate | Learning-rate value for the chest configuration was mistuned *(inferred)* | Updated the learning-rate value for the chest configuration | `a8ff08b` |
 | 19 | `Code/test.py` | Sweep runs failed opaquely on individual checkpoint/model failures, with insufficient logging to diagnose which configuration failed or why | `test_checkpoint` and `run_sweep` lacked structured error handling, allowing one failure to obscure or halt the full sweep without actionable logs | Refactored `test_checkpoint` and `run_sweep` to add structured logging and error handling | `db01d6c` |
 | 20 | `Code/models.py`, `Code/train.py`, `config/data_config.json` | Model activation function was not configurable per architecture (VGGBlock/AlexNet), and weight decay was not applied during training, contributing to overfitting | Activation function was hardcoded in VGGBlock/AlexNet rather than parameterized, and the optimizer was not configured with a weight-decay term *(inferred)* | Added an `activation` parameter to VGGBlock and AlexNet; added `weight_decay` to `data_config.json` | `7c5b16c` |
-
-## Notes on exclusions
-The following commits were reviewed but excluded as they represent scaffolding/feature additions
-rather than bug or corruption fixes: `f9b31ab` (`.gitignore` addition), `3008138` (initial config
-creation), `4baa4d5`/`4baacf5`-equivalent config restructuring commit `4baa4d5` (organizational,
-not corrective), `dae3769` (dependency manifest addition), `f6b2b11` (new sweep test config),
-`6863abc` (new `run_sweep` feature), and `b523376` (`main` refactor to accept parameters — a
-structural extension rather than a fix to a defect).
