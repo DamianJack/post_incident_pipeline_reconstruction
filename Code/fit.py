@@ -5,6 +5,7 @@
 #-----------------------
 
 import torch
+import time
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 from logging import getLogger
@@ -116,3 +117,27 @@ class Trainer:
 
     
         return precision, recall, macro_f1, accuracy
+    
+    def benchmark_inference(self, dataloader, warmup=2):
+        self.model.eval()
+        use_cuda = self.device.type == "cuda"
+        with torch.no_grad():
+            for i, (images, _) in enumerate(dataloader):
+                self.model(images.to(self.device))
+                if i + 1 >= warmup:
+                    break
+        if use_cuda:
+            torch.cuda.synchronize()
+            torch.cuda.reset_peak_memory_stats(self.device)
+        total = 0
+        start = time.perf_counter()
+        with torch.no_grad():
+            for images, _ in dataloader:
+                self.model(images.to(self.device))
+                total += images.size(0)
+        if use_cuda:
+            torch.cuda.synchronize()
+        elapsed = time.perf_counter() - start
+        latency_ms = (elapsed / total) * 1000.0
+        peak_mem_mb = torch.cuda.max_memory_allocated(self.device) / (1024**2) if use_cuda else float("nan")
+        return latency_ms, peak_mem_mb
