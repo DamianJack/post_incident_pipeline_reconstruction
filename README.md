@@ -1,4 +1,4 @@
-# post_incident_pipeline_reconstruction
+# Classification Training & Evaluation Pipeline
 
 A PyTorch pipeline for training and evaluating CNN classifiers (ResNet18, VGG16, AlexNet)
 across multiple medical datasets, with checkpointing, per-run logging,
