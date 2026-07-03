@@ -57,4 +57,6 @@ def get_loaders(data, data_path, batch_size, val_split=0.1):
     
     return train_loader, val_loader, test_loader
 
-# train_loader, val_loader, test_loader = get_loaders('lesions', 'data', batch_size=64, val_split=0.2)
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    train_loader, val_loader, test_loader = get_loaders("organs", "data", batch_size=64, val_split=0.2)
