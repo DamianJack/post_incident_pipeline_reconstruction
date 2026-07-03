@@ -34,18 +34,27 @@ def test_checkpoint(dataset, model_name, checkpoint_path=None):
     trainer = Trainer(model, criterion, optimizer, device)
 
     if checkpoint_path is None:
-        checkpoint_path = f"best_model/{dataset}_{model_name}.pth"
+        checkpoint_path = f"best_model_green/{dataset}_{model_name}.pth"
+    Path(checkpoint_path).parent.mkdir(parents=True, exist_ok=True)
 
-    if not Path(checkpoint_path).exists():
-        logger.warning("Checkpoint not found at %s. Training from scratch.", checkpoint_path)
-        log_path = Path("logs")
-        log_path.mkdir(parents=True, exist_ok=True)
-        logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-train-{dataset}-{model_name}.log"
-        configure_logging(log_file=logfile_name)
-        trainer.fit(train_loader, valid_loader, epochs=data_config.get("EPOCHS", 10), checkpoint_path=str(checkpoint_path))
+    log_path = Path("logs")
+    log_path.mkdir(parents=True, exist_ok=True)
+    logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-train-{dataset}-{model_name}.log"
+    configure_logging(log_file=logfile_name)
+
+    use_cuda = device.type == "cuda"
+    if use_cuda:
+        torch.cuda.reset_peak_memory_stats(device)
+    t0 = time.perf_counter()
+    trainer.fit(train_loader, valid_loader, epochs=data_config.get("EPOCHS", 10), checkpoint_path=str(checkpoint_path))
+    train_runtime_s = time.perf_counter() - t0
+    peak_train_mem_mb = torch.cuda.max_memory_allocated(device) / (1024**2) if use_cuda else float("nan")
 
     trainer.load_checkpoint(str(checkpoint_path))
     precision, recall, macro_f1, accuracy = trainer.test_eval(test_loader)
+
+    num_params = sum(p.numel() for p in model.parameters())
+    infer_latency_ms, peak_infer_mem_mb = trainer.benchmark_inference(test_loader)
 
     metrics = {
         "dataset": dataset,
@@ -55,6 +64,11 @@ def test_checkpoint(dataset, model_name, checkpoint_path=None):
         "precision": precision,
         "recall": recall,
         "macro_f1": macro_f1,
+        "num_params": num_params,
+        "train_runtime_s": train_runtime_s,
+        "infer_latency_ms": infer_latency_ms,
+        "peak_train_mem_mb": peak_train_mem_mb,
+        "peak_infer_mem_mb": peak_infer_mem_mb,
     }
     return metrics
 
