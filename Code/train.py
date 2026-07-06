@@ -38,8 +38,7 @@ def main(data, data_model):
     model_class = getattr(models, data_model)
     model = model_class(in_channels=data_config["CHANNELS"], num_classes=data_config["NUM_CLASSES"], drop_rate=data_config["DROP_RATE"], activation_str=data_config["ACTIVATION"]).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"],    weight_decay=data_config.get("WEIGHT_DECAY"),
-)
+    optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"],  weight_decay=data_config.get("WEIGHT_DECAY"))
 
     trainer = Trainer(model, criterion, optimizer, device)
     checkpoint_name = f"{data}_{data_model}.pth"
@@ -47,21 +46,35 @@ def main(data, data_model):
     best_model_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = f"{best_model_dir}/{checkpoint_name}"
 
-    trainer.fit(train_loader, val_loader, epochs=data_config["EPOCHS"], checkpoint_path=str(checkpoint_path))
+    best_val_acc, best_epoch, total_runtime, peak_training_memory = trainer.fit(train_loader, val_loader, epochs=data_config["EPOCHS"], checkpoint_path=str(checkpoint_path))
     trainer.load_checkpoint(str(checkpoint_path))
 
-    precision, recall, macro_f1, accuracy = trainer.test_eval(test_loader)
-    logger.info(f"Test Precision: {precision:.4f}, Recall: {recall:.4f}, Macro F1-Score: {macro_f1:.4f}, Accuracy: {accuracy:.4f}%")
-    metrics = {
+    training_metrics = {
+        "total_runtime": total_runtime,
+        "dataset": data,
+        "model": data_model,
+        "best_epoch": best_epoch,
+        "best_val_acc": best_val_acc,
+        "checkpoint_path": checkpoint_path,
+        "peak_training_memory": peak_training_memory}
+
+    logger.info(f"Training metrics: {training_metrics}")
+
+    precision, recall, macro_f1, accuracy, inference_latency, peak_inference_memory = trainer.test_eval(test_loader)
+    test_metrics = {
         "dataset":   data,
         "model":     data_model,
-        "checkpoint": str(checkpoint_path),
         "accuracy":  accuracy,
         "precision": precision,
         "recall":    recall,
         "macro_f1":  macro_f1,
+        "inference_latency": inference_latency,
+        "peak_inference_memory": peak_inference_memory
     }
-    return metrics
+    
+    logger.info(f"Test metrics: {test_metrics}")
+    
+    return training_metrics, test_metrics
 
 if __name__ == "__main__":
     import argparse
