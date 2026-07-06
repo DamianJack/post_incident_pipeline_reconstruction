@@ -80,7 +80,7 @@ class Trainer:
     def fit(self, train_loader, val_loader, epochs, checkpoint_path=None):
         logger.info(" Starting Training Routine...")
         logger.info("-" * 50)
-        start_time = time.time()
+        start_time = time.perf_counter()
         best_val_acc = float("-inf")
         best_epoch = 0
         peak_training_memory = self.get_memory_usage()
@@ -105,7 +105,7 @@ class Trainer:
         logger.info("-" * 50)
         logger.info("Training Complete!")
 
-        total_runtime = time.time() - start_time
+        total_runtime = time.perf_counter() - start_time
 
         return best_val_acc, best_epoch, total_runtime, peak_training_memory
 
