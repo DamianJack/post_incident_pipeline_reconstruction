@@ -32,7 +32,7 @@
         "LEARNING_RATE": 0.001, 
         "EPOCHS"       : 15,
         "DROP_RATE"    : 0.5,
-        "WEIGHT_DECAY" : 1e-4
+        "WEIGHT_DECAY" : 0
 
     },
 
