@@ -94,19 +94,15 @@ class AlexNet(nn.Module):
             Activation(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
         )
-        
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Sequential(
             nn.Dropout(p=drop_rate),
-            nn.Linear(3072, 1024),
-            Activation(inplace=True),
-            nn.Dropout(p=drop_rate),
-            nn.Linear(1024, 1024),
-            Activation(inplace=True),
-            nn.Linear(1024, num_classes),
+            nn.Linear(192, num_classes),
         )
 
     def forward(self, x):
         x = self.features(x)
+        x = self.avgpool(x)
         x = torch.flatten(x, 1)
         return self.classifier(x)
 
@@ -123,22 +119,16 @@ class VGG16(nn.Module):
             VGGBlock(in_channels, 64, num_convs=2, activation=Activation),
             VGGBlock(64, 128, num_convs=2, activation=Activation),
             VGGBlock(128, 256, num_convs=3, activation=Activation),
-            VGGBlock(256, 512, num_convs=3, activation=Activation),
-            VGGBlock(512, 512, num_convs=3, activation=Activation)
         )
-        
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Sequential(
-            nn.Linear(2048, 1024),
-            Activation(inplace=True),
             nn.Dropout(p=drop_rate),
-            nn.Linear(1024, 512),
-            Activation(inplace=True),
-            nn.Dropout(p=drop_rate),
-            nn.Linear(512, num_classes)
+            nn.Linear(256, num_classes),
         )
 
     def forward(self, x):
         x = self.features(x)
+        x = self.avgpool(x)
         x = torch.flatten(x, 1)
         return self.classifier(x)
 
@@ -160,20 +150,16 @@ class ResNet18(nn.Module):
         logger.info(f"Using activation function: {self.activation}")
 
         self.stage1 = nn.Sequential(
-            ResBlock(64, 64, activation(inplace=True), stride=1),
             ResBlock(64, 64, activation(inplace=True), stride=1)
         )
         self.stage2 = nn.Sequential(
-            ResBlock(64, 128, activation(inplace=True), stride=2),          
-            ResBlock(128, 128, activation(inplace=True), stride=1)
+            ResBlock(64, 128, activation(inplace=True), stride=2)        
         )
         self.stage3 = nn.Sequential(
-            ResBlock(128, 256, activation(inplace=True), stride=2),
-            ResBlock(256, 256, activation(inplace=True), stride=1)
+            ResBlock(128, 256, activation(inplace=True), stride=2)
         )
         self.stage4 = nn.Sequential(
-            ResBlock(256, 512, activation(inplace=True), stride=2),
-            ResBlock(512, 512, activation(inplace=True), stride=1)
+            ResBlock(256, 512, activation(inplace=True), stride=2)
         )
         
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))

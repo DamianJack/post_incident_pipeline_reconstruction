@@ -3,6 +3,7 @@ import json
 import itertools
 from pathlib import Path
 import time
+from tabulate import tabulate
 
 import torch
 import torch.nn as nn
@@ -11,100 +12,80 @@ import torch.optim as optim
 from data import get_loaders
 import models
 from fit import Trainer
-from train import configure_logging
+from train import configure_logging, main
 import logging
 
 logger = logging.getLogger(__name__)
-
-def test_checkpoint(dataset, model_name, checkpoint_path=None):
-    with open("config//data_config.json", "r") as f:
-        cfg = json.load(f)
-
-    data_config = cfg[dataset]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    train_loader, valid_loader, test_loader = get_loaders(data=dataset, data_path=data_config["DATA_PATH"], batch_size=data_config["BATCH_SIZE"])
-
-    model_class = getattr(models, model_name)
-    model = model_class(in_channels=data_config["CHANNELS"], num_classes=data_config["NUM_CLASSES"], drop_rate=data_config.get("DROP_RATE", 0.5), activation_str=data_config.get("ACTIVATION")).to(device)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=data_config.get("LEARNING_RATE", 1e-3))
-
-    trainer = Trainer(model, criterion, optimizer, device)
-
-    if checkpoint_path is None:
-        checkpoint_path = f"best_model/{dataset}_{model_name}.pth"
-
-    if not Path(checkpoint_path).exists():
-        logger.warning("Checkpoint not found at %s. Training from scratch.", checkpoint_path)
-        log_path = Path("logs")
-        log_path.mkdir(parents=True, exist_ok=True)
-        logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-train-{dataset}-{model_name}.log"
-        configure_logging(log_file=logfile_name)
-        trainer.fit(train_loader, valid_loader, epochs=data_config.get("EPOCHS", 10), checkpoint_path=str(checkpoint_path))
-
-    trainer.load_checkpoint(str(checkpoint_path))
-    precision, recall, macro_f1, accuracy = trainer.test_eval(test_loader)
-
-    metrics = {
-        "dataset": dataset,
-        "model": model_name,
-        "checkpoint": str(checkpoint_path),
-        "accuracy": accuracy,
-        "precision": precision,
-        "recall": recall,
-        "macro_f1": macro_f1,
-    }
-    return metrics
 
 def run_sweep(config_path="config//test_config.json"):
     with open(config_path, "r") as f:
         config = json.load(f)
 
-    sweep      = config["SWEEP"]
-    datasets   = sweep["datasets"]
+    sweep       = config["SWEEP"]
+    datasets    = sweep["datasets"]
     models_list = sweep["models"]
     results_path = sweep.get("results_path", "results.csv")
 
-    results = []
+    train_results, test_results = {}, {}
     for dataset, model_name in itertools.product(datasets, models_list):
         log_path = Path("logs")
         log_path.mkdir(parents=True, exist_ok=True)
         logfile_name = f"{log_path}/{time.strftime('%Y%m%d-%H%M%S')}-test-{dataset}-{model_name}.log"
         configure_logging(log_file=logfile_name)
         try:
-            metrics = test_checkpoint(dataset, model_name)
-            results.append(metrics)
+            train_metrics, test_metrics = main(dataset, model_name)
         except Exception as e:
             logger.exception("[FAILED] %s x %s", dataset, model_name)
-            results.append({"dataset": dataset, "model": model_name, "error": str(e)})
+            train_metrics = {"dataset": dataset, "model": model_name, "error": str(e)}
+            test_metrics  = {"dataset": dataset, "model": model_name, "error": str(e)}
 
-    # union of keys across all rows -> new metrics become columns automatically
-    fieldnames = []
-    for row in results:
-        for key in row:
-            if key not in fieldnames:
-                fieldnames.append(key)
+        # make sure dataset/model identifiers are always present in the row
+        train_metrics = {"dataset": dataset, "model": model_name, **train_metrics}
+        test_metrics  = {"dataset": dataset, "model": model_name, **test_metrics}
+
+        train_results[(dataset, model_name)] = train_metrics
+        test_results[(dataset, model_name)]  = test_metrics
+
+    _write_and_print(train_results, test_results, results_path)
+
+
+def _write_and_print(train_results, test_results, results_path):
+    train_rows = list(train_results.values())
+    test_rows  = list(test_results.values())
+
+    # Union of all keys across rows (handles rows with "error" vs normal metrics)
+    train_fields = _ordered_union_keys(train_rows)
+    test_fields  = _ordered_union_keys(test_rows)
 
     with open(results_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=train_fields)
         writer.writeheader()
-        writer.writerows(results)
+        writer.writerows(train_rows)
+        f.write("\n")
+        writer = csv.DictWriter(f, fieldnames=test_fields)
+        writer.writeheader()
+        writer.writerows(test_rows)
 
-    print("\n" + "=" * 60)
-    print(f"Sweep complete. {len(results)} runs -> {results_path}")
-    print("=" * 60)
-    for row in results:
-        if "error" in row:
-            print(f"{row['dataset']:<10} {row['model']:<10} FAILED")
-        else:
-            print(f"{row['dataset']:<10} {row['model']:<10} "
-                  f"acc={row.get('accuracy', float('nan')):6.2f}  "
-                  f"prec={row.get('precision', float('nan')):.4f}  "
-                  f"rec={row.get('recall', float('nan')):.4f}  "
-                  f"f1={row.get('macro_f1', float('nan')):.4f}  "
-                  f"checkpoint={row.get('checkpoint', 'N/A')}")
+    print("\n" + "=" * 200)
+    print(f"Sweep complete. -> {results_path}")
+    print("=" * 200)
+
+    print("\nTrain Metrics")
+    print(tabulate(train_rows, headers="keys", tablefmt="fancy_grid", floatfmt=".4f"))
+
+    print("\nTest Metrics")
+    print(tabulate(test_rows, headers="keys", tablefmt="fancy_grid", floatfmt=".4f"))
+
+
+def _ordered_union_keys(rows):
+    keys = []
+    seen = set()
+    for row in rows:
+        for k in row.keys():
+            if k not in seen:
+                seen.add(k)
+                keys.append(k)
+    return keys
 
 
 if __name__ == "__main__":
