@@ -25,8 +25,10 @@ class Trainer:
     def load_checkpoint(self, path):
         self.model.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
 
-    def get_memory_usage(self):
+    def get_memory_usage(self, reset=False):
         if self.device.type == "cuda":
+            if reset:
+                torch.cuda.reset_peak_memory_stats(self.device)
             return torch.cuda.max_memory_allocated(self.device) / (1024 ** 2)  # Convert to MB
         else:
             process = psutil.Process()
@@ -83,7 +85,7 @@ class Trainer:
         start_time = time.perf_counter()
         best_val_acc = float("-inf")
         best_epoch = 0
-        peak_training_memory = self.get_memory_usage()
+        peak_training_memory = self.get_memory_usage(reset=True)
         
         for epoch in range(epochs):
             train_loss, train_acc, train_peak_memory = self.train_one_epoch(train_loader)
@@ -114,7 +116,7 @@ class Trainer:
         all_preds, all_targets = [], []
         correct, total = 0, 0
         start_time = time.perf_counter()
-        peak_inference_memory = self.get_memory_usage()
+        peak_inference_memory = self.get_memory_usage(reset=True)
         
         with torch.no_grad():
             for images, labels in dataloader:
