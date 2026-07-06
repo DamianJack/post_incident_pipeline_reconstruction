@@ -64,7 +64,7 @@ def main(data, data_model):
     test_metrics = {
         "dataset":   data,
         "model":     data_model,
-        "accuracy":  accuracy,
+        "test_accuracy":  accuracy,
         "precision": precision,
         "recall":    recall,
         "macro_f1":  macro_f1,
@@ -73,7 +73,7 @@ def main(data, data_model):
     }
     
     logger.info(f"Test metrics: {test_metrics}")
-    
+
     return training_metrics, test_metrics
 
 if __name__ == "__main__":

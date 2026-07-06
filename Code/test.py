@@ -26,7 +26,7 @@ def run_sweep(config_path="config//test_config.json"):
     models_list = sweep["models"]
     results_path = sweep.get("results_path", "results.csv")
 
-    results = []
+    train_results, test_results = [], []
     for dataset, model_name in itertools.product(datasets, models_list):
         log_path = Path("logs")
         log_path.mkdir(parents=True, exist_ok=True)
@@ -34,10 +34,12 @@ def run_sweep(config_path="config//test_config.json"):
         configure_logging(log_file=logfile_name)
         try:
             training_metrics, test_metrics = main(dataset, model_name)
-            results.append({**training_metrics, **test_metrics})
+            train_results.append(training_metrics)
+            test_results.append(test_metrics)
         except Exception as e:
             logger.exception("[FAILED] %s x %s", dataset, model_name)
-            results.append({"dataset": dataset, "model": model_name, "error": str(e)})
+            train_results.append({"dataset": dataset, "model": model_name, "error": str(e)})
+            test_results.append({"dataset": dataset, "model": model_name, "error": str(e)})
 
     # union of keys across all rows -> new metrics become columns automatically
     fieldnames = []
@@ -55,8 +57,10 @@ def run_sweep(config_path="config//test_config.json"):
     print(f"Sweep complete. {len(results)} runs -> {results_path}")
     print("=" * 200)
 
-    print(tabulate(results, headers="keys", tablefmt="fancy_grid", floatfmt=".4f"))
+    print("\nTraining Results:")
+    print(tabulate(train_results, headers="keys", tablefmt="fancy_grid", floatfmt=".4f"))
 
-
+    print("\nTest Results:")
+    print(tabulate(test_results, headers="keys", tablefmt="fancy_grid", floatfmt=".4f"))
 if __name__ == "__main__":
     run_sweep()
