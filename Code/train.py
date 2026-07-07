@@ -7,7 +7,6 @@
 import json
 import logging
 from pathlib import Path
-from xml.parsers.expat import model
 
 import torch
 import torch.nn as nn
@@ -38,19 +37,15 @@ def main(data, data_model):
 
     model_class = getattr(models, data_model)
     model = model_class(in_channels=data_config["CHANNELS"], num_classes=data_config["NUM_CLASSES"], drop_rate=data_config["DROP_RATE"], activation_str=data_config["ACTIVATION"]).to(device)
+
     # Tranfer learning (feature extracrion and fine tuning)
-    pretrained_path = f"best_model_green/orgs_{data_model}.pth"
+    pretrained_path = f"best_model_slimmed/orgs_{data_model}.pth"
     state = torch.load(pretrained_path, map_location=device, weights_only=True)
     model.load_state_dict(state)                    # orgs & organs match: 1 channel, 11 classes
-    # for p in model.parameters():
-    #     p.requires_grad = False                     # freeze the whole feature extractor
-    # for p in model.classifier.parameters():
-    #     p.requires_grad = True                      # train only the classifier head
+   
     criterion = nn.CrossEntropyLoss()
-    # optimizer = optim.Adam([p for p in model.parameters() if p.requires_grad],
-                        #    lr=data_config["LEARNING_RATE"], weight_decay=data_config.get("WEIGHT_DECAY", 0))
-    optimizer = optim.Adam(model.parameters(),
-                           lr=data_config["LEARNING_RATE"] * 0.1, weight_decay=data_config.get("WEIGHT_DECAY", 0))
+    optimizer = optim.Adam(model.parameters(), lr=data_config["LEARNING_RATE"] * 0.1, weight_decay=data_config.get("WEIGHT_DECAY", 0))
+
     trainer = Trainer(model, criterion, optimizer, device)
     checkpoint_name = f"{data}_{data_model}.pth"
     best_model_dir = Path("best_model_organs_Finetuned")
