@@ -1,7 +1,7 @@
 {
     "SWEEP": {
-        "datasets": ["cells", "chest", "lesions", "orgs"],
+        "datasets": ["organs"],
         "models":   ["AlexNet", "VGG16", "ResNet18"],
-        "results_path": "results.csv"
+        "results_path": "results_organs_transfer_finetuned.csv"
     }
 }
